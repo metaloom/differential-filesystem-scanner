@@ -1,12 +1,10 @@
 package io.metaloom.fs.impl;
 
 import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 
 import io.metaloom.fs.FileInfo;
 import io.metaloom.fs.FileState;
-import io.metaloom.utils.fs.INodeUtils;
 
 public class FileInfoImpl implements FileInfo {
 
@@ -35,34 +33,22 @@ public class FileInfoImpl implements FileInfo {
 	}
 
 	@Override
-	public long inode() throws IOException {
-		if (inode == null) {
-			inode = INodeUtils.loadInode(path);
-		}
+	public Long inode() {
 		return inode;
 	}
 
 	@Override
-	public long size() throws IOException {
-		if (size == null) {
-			size = Files.size(path);
-		}
+	public Long size() {
 		return size;
 	}
 
 	@Override
-	public long modTimeNano() throws IOException {
-		if (modTimeNano == null) {
-			modTimeNano = INodeUtils.loadModificationNano(path);
-		}
+	public Long modTimeNano() {
 		return modTimeNano;
 	}
 
 	@Override
-	public long modTimeSecond() throws IOException {
-		if (modTimeSecond == null) {
-			modTimeSecond = INodeUtils.loadModificationEpochSecond(path);
-		}
+	public Long modTimeSecond() {
 		return modTimeSecond;
 	}
 
@@ -85,17 +71,12 @@ public class FileInfoImpl implements FileInfo {
 	}
 
 	@Override
-	public boolean hasInvalidModNanoTime() {
-		// return modTimeNano == STAT_NSEC_INVALID;
-		return false;
-	}
-
-	@Override
-	public void updateAttr(FileInfo info) throws IOException {
-		this.path = info.path();
-		this.modTimeNano = info.modTimeNano();
-		this.modTimeSecond = info.modTimeSecond();
-		this.size = info.size();
+	public void updateAttr(LinuxFile file) throws IOException {
+		this.path = file.toPath();
+		this.inode = file.inode();
+		this.modTimeNano = file.modTimeNano();
+		this.modTimeSecond = file.modTimeSecond();
+		this.size = file.length();
 	}
 
 }

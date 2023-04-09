@@ -19,14 +19,17 @@ Both filesystem scanner implementations however have limitations. It is **not po
 ## Example
 
 ```java
-FilesystemScanner index = new FilesystemScanner();
-Path sourcePath = Paths.get("src");
-index.scan(sourcePath);
+FilesystemScannerImpl scanner = new FilesystemScannerImpl();
+FileIndex index = scanner.getIndex();
 
-Set<FileInfo> addedFiles = index.added();
-Set<FileInfo> deletedFiles = index.deleted();
-Set<FileInfo> modifiedFiles = index.modified();
-Set<FileInfo> movedFiles = index.moved();
+index.add(Paths.get("target/testfs/folderB/modByTime.txt"));
+
+Path sourcePath = Paths.get("src");
+ScanResult result = scanner.scan(sourcePath);
+Set<FileInfo> addedFiles = result.added();
+Set<FileInfo> deletedFiles = result.deleted();
+Set<FileInfo> modifiedFiles = result.modified();
+Set<FileInfo> movedFiles = result.moved();
 ```
 
 ## Releasing

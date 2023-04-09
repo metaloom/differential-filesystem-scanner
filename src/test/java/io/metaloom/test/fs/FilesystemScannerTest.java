@@ -13,7 +13,8 @@ import org.junit.jupiter.api.Test;
 
 import com.google.common.io.Files;
 
-import io.metaloom.fs.FilesystemScanner;
+import io.metaloom.fs.ScanResult;
+import io.metaloom.fs.impl.FilesystemScannerImpl;
 
 public class FilesystemScannerTest {
 
@@ -46,7 +47,7 @@ public class FilesystemScannerTest {
 		Files.touch(movingFile);
 		Files.touch(modifiedByModTimeFile);
 
-		FilesystemScanner index = new FilesystemScanner();
+		FilesystemScannerImpl index = new FilesystemScannerImpl();
 		Path sourcePath = Paths.get("target/testfs");
 		// 1. Initial scan
 		index.scan(sourcePath);
@@ -66,19 +67,19 @@ public class FilesystemScannerTest {
 		movingFile.renameTo(moveTargetFile);
 
 		// 2. Diff with second scan
-		index.scan(sourcePath);
-		assertEquals(1, index.deleted().size(), "There should only be one file marked as deleted");
-		assertEquals(1, index.moved().size(), "There should only be one file marked as moved");
-		assertEquals(1, index.modified().size(), "There should only be one file marked as modified");
-		assertEquals(2, index.present().size(), "There should only be two file marked as present");
-		assertEquals(1, index.added().size(), "There should only be one file marked as added");
+		ScanResult result = index.scan(sourcePath);
+		assertEquals(1, result.deleted().size(), "There should only be one file marked as deleted");
+		assertEquals(1, result.moved().size(), "There should only be one file marked as moved");
+		assertEquals(1, result.modified().size(), "There should only be one file marked as modified");
+		assertEquals(2, result.present().size(), "There should only be two file marked as present");
+		assertEquals(1, result.added().size(), "There should only be one file marked as added");
 
 		// 3. Run - Now the diff should be different since we did not change files
-		index.scan(sourcePath);
-		assertEquals(0, index.deleted().size());
-		assertEquals(0, index.moved().size());
-		assertEquals(0, index.modified().size());
-		assertEquals(0, index.added().size());
-		assertEquals(5, index.present().size());
+		result = index.scan(sourcePath);
+		assertEquals(0, result.deleted().size());
+		assertEquals(0, result.moved().size());
+		assertEquals(0, result.modified().size());
+		assertEquals(0, result.added().size());
+		assertEquals(5, result.present().size());
 	}
 }

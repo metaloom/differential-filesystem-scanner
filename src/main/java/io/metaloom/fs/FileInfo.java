@@ -3,24 +3,24 @@ package io.metaloom.fs;
 import java.io.IOException;
 import java.nio.file.Path;
 
+import io.metaloom.fs.impl.LinuxFile;
+
 public interface FileInfo {
 
 	Path path();
 
-	long inode() throws IOException;
+	Long inode();
 
-	long size() throws IOException;
+	Long size();
 
-	long modTimeNano() throws IOException;
+	Long modTimeNano();
 
-	long modTimeSecond() throws IOException;
+	Long modTimeSecond();
 
 	FileState state();
 
 	FileState state(FileState state);
 
-	boolean hasInvalidModNanoTime();
-
-	void updateAttr(FileInfo info) throws IOException;
+	void updateAttr(LinuxFile file) throws IOException;
 
 }
