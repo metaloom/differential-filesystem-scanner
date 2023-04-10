@@ -5,7 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.util.stream.Stream;
 
 import org.apache.commons.io.FileUtils;
 import org.junit.jupiter.api.BeforeEach;
@@ -13,12 +13,23 @@ import org.junit.jupiter.api.Test;
 
 import com.google.common.io.Files;
 
+import io.metaloom.fs.FileInfo;
+import io.metaloom.fs.FilesystemScanner;
 import io.metaloom.fs.ScanResult;
 import io.metaloom.fs.impl.FilesystemScannerImpl;
 
 public class FilesystemScannerTest {
 
 	public static File ROOT = new File("target", "testfs");
+	public static File folderA = new File(ROOT, "folderA");
+	public static File folderB = new File(ROOT, "folderB");
+	public static File existingFile = new File(folderA, "existingFile");
+	public static File existingFile2 = new File(folderA, "existingFile2");
+	public static File newFile = new File(folderA, "new.txt");
+	public static File deletedFile = new File(folderA, "deleted.txt");
+	public static File modifiedByModTimeFile = new File(folderB, "modByTime.txt");
+	public static File movingFile = new File(folderA, "moved.txt");
+	public static File moveTargetFile = new File(folderB, "movedTo.txt");
 
 	@BeforeEach
 	public void cleanup() throws IOException {
@@ -26,29 +37,61 @@ public class FilesystemScannerTest {
 	}
 
 	@Test
-	public void testScan() throws IOException {
-		File folderA = new File(ROOT, "folderA");
-		File folderB = new File(ROOT, "folderB");
+	public void testStream() throws IOException {
+		// Prepare test files
 		folderA.mkdirs();
 		folderB.mkdirs();
-
-		File existingFile = new File(folderA, "existingFile");
-		File existingFile2 = new File(folderA, "existingFile2");
-		File newFile = new File(folderA, "new.txt");
-		File deletedFile = new File(folderA, "deleted.txt");
-		File modifiedByModTimeFile = new File(folderB, "modByTime.txt");
-		File movingFile = new File(folderA, "moved.txt");
-		File moveTargetFile = new File(folderB, "movedTo.txt");
-
-		// Prepare test files
 		Files.touch(existingFile);
 		Files.touch(existingFile2);
 		Files.touch(deletedFile);
 		Files.touch(movingFile);
 		Files.touch(modifiedByModTimeFile);
 
-		FilesystemScannerImpl index = new FilesystemScannerImpl();
-		Path sourcePath = Paths.get("target/testfs");
+		FilesystemScanner scanner = new FilesystemScannerImpl();
+		scanner.scanStream(ROOT.toPath()).count();
+		System.out.println("----------");
+
+		scanner.getIndex().values().forEach(info -> {
+			System.out.println(info);
+		});
+		System.out.println("-------");
+		
+		// Mod file
+		Files.touch(modifiedByModTimeFile);
+
+		// New file
+		Files.touch(newFile);
+
+		// Del file
+		deletedFile.delete();
+
+		// Move file
+		movingFile.renameTo(moveTargetFile);
+
+		Stream<FileInfo> stream = scanner.scanStream(ROOT.toPath());
+		stream.forEach(info -> {
+			System.out.println(info);
+		});
+		System.out.println("-------");
+		scanner.getIndex().values().forEach(info -> {
+			System.out.println(info);
+		});
+	}
+
+	@Test
+	public void testScan() throws IOException {
+
+		// Prepare test files
+		folderA.mkdirs();
+		folderB.mkdirs();
+		Files.touch(existingFile);
+		Files.touch(existingFile2);
+		Files.touch(deletedFile);
+		Files.touch(movingFile);
+		Files.touch(modifiedByModTimeFile);
+
+		FilesystemScanner index = new FilesystemScannerImpl();
+		Path sourcePath = ROOT.toPath();
 		// 1. Initial scan
 		index.scan(sourcePath);
 

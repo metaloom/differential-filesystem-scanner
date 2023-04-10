@@ -4,7 +4,9 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.Set;
+import java.util.stream.Stream;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,7 +29,7 @@ public class FilesystemScannerImpl implements FilesystemScanner {
 	}
 
 	@Override
-	public ScanResult scan(Path startPath) throws IOException {
+	public Stream<FileInfo> scanStream(Path startPath) throws IOException {
 		boolean wasEmpty = index.isEmpty();
 		// Reset the state to unknown for all known files
 		// This way we can find deleted files later
@@ -41,39 +43,37 @@ public class FilesystemScannerImpl implements FilesystemScanner {
 		for (FileInfo info : purgeSet) {
 			index.remove(info.inode());
 		}
-		Files.walk(startPath)
+		Iterator<FileInfo> presentFilesIt = Files.walk(startPath)
 			.filter(Files::isRegularFile)
 			.map(LinuxFile::new)
-			.forEach(file -> {
+			.map(file -> {
 				try {
 					// No need to check if the index is empty
 					if (wasEmpty) {
 						FileInfo info = new FileInfoImpl(file.toPath());
 						info.state(FileState.PRESENT);
 						info.updateAttr(file);
-						log.info("[NEW]: " + info);
-						index.add(info);
+						log.debug("[NEW]: " + info);
+						return info;
 					} else {
-						check(file);
+						return check(file);
 					}
 				} catch (IOException e) {
-					e.printStackTrace();
+					throw new RuntimeException(e);
 				}
-			});
+			}).iterator();
 
-		if (!wasEmpty) {
-			// Set<FileInfo> deletedFiles = new HashSet<>();
-			for (FileInfo info : index.values()) {
-				if (info.state() == FileState.UNKNOWN) {
-					info.state(FileState.DELETED);
-					log.info("[DELETE] " + info);
-				}
-			}
-		}
+		DeltaIndexIterator it = new DeltaIndexIterator(presentFilesIt, index);
+		return it.stream();
+	}
+
+	@Override
+	public ScanResult scan(Path startPath) throws IOException {
+		scanStream(startPath).count();
 		return new ScanResultImpl(index.values());
 	}
 
-	private void check(LinuxFile file) throws IOException {
+	private FileInfo check(LinuxFile file) throws IOException {
 		FileInfo indexFile = index.get(file.inode());
 		// Found matching file by inode. Lets compare the mod time/size
 		if (indexFile != null) {
@@ -84,26 +84,28 @@ public class FilesystemScannerImpl implements FilesystemScanner {
 			if (modified) {
 				indexFile.state(FileState.MODIFIED);
 				indexFile.updateAttr(file);
-				log.info("[MODIFIED] " + indexFile);
+				log.debug("[MODIFIED] " + indexFile);
 			} else {
 				// Now lets check the path
-				if (indexFile.path().toAbsolutePath().equals(file.toPath().toAbsolutePath())) {
+				if (indexFile.path().toAbsolutePath().equals(file.toAbsolutePath())) {
 					// Same path - same inode - same size -> keep it online
 					indexFile.state(FileState.PRESENT);
-					log.info("[PRESENT] " + indexFile);
+					log.debug("[PRESENT] " + indexFile);
 				} else {
 					indexFile.state(FileState.MOVED);
 					indexFile.updateAttr(file);
-					log.info("[MOVED] " + indexFile);
+					log.debug("[MOVED] " + indexFile);
 				}
 			}
+			return indexFile;
 		} else {
 			// Not known by inode -> new file
 			FileInfo info = new FileInfoImpl(file.toPath());
 			info.updateAttr(file);
 			info.state(FileState.NEW);
 			index.add(info);
-			log.info("[NEW] " + info);
+			log.debug("[NEW] " + info);
+			return info;
 		}
 	}
 

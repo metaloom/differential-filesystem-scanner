@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 
 import io.metaloom.fs.FileIndex;
 import io.metaloom.fs.FileInfo;
+import io.metaloom.fs.FilesystemScanner;
 import io.metaloom.fs.ScanResult;
 import io.metaloom.fs.impl.FilesystemScannerImpl;
 
@@ -17,7 +18,7 @@ public class ExampleUsageTest {
 	@Test
 	public void testUsage() throws IOException {
 		// SNIPPET START usage
-		FilesystemScannerImpl scanner = new FilesystemScannerImpl();
+		FilesystemScanner scanner = new FilesystemScannerImpl();
 		FileIndex index = scanner.getIndex();
 
 		index.add(Paths.get("target/testfs/folderB/modByTime.txt"));

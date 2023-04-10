@@ -43,4 +43,8 @@ public class LinuxFile extends File {
 		return modTimeSecond;
 	}
 
+	public Path toAbsolutePath() {
+		return toPath().toAbsolutePath();
+	}
+
 }
