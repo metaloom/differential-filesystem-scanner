@@ -4,8 +4,6 @@ This project contains a differential filesystem scanner implementation for Java.
 
 It is highly inspired by [snapraid filesystem scan implementation](https://github.com/amadvance/snapraid/blob/9bc570eeb3ce6d1d4d3e491b49a4c12488920cbe/cmdline/scan.c#L741) which uses randomized nanosecond modification timestamp to locate *potential* modified files.
 
-Both filesystem scanner implementations however have limitations. It is **not possible** to precisely detected all modified files. A file can be modified without altering the modification timestamp and size. The scanner will thus not be able to detect the modification.
-
 ## Maven
 
 ```xml
@@ -27,6 +25,12 @@ Alternatively a streaming API can be used to fetch the diff.
 ```java
 %{snippet|id=stream|file=src/test/java/io/metaloom/test/fs/ExampleUsageTest.java}
 ```
+
+## Limitations
+
+Both filesystem scanner implementations however have limitations. It is **not possible** to precisely detected all modified files. A file can be modified without altering the modification timestamp and size. The scanner will thus not be able to detect the modification.
+
+The current version of this library only contains a **Linux** specific implementation.
 
 ## Releasing
 
