@@ -47,7 +47,7 @@ public class LinuxFilesystemScannerImpl implements LinuxFilesystemScanner {
 			info.state(FileState.UNKNOWN);
 		}
 		for (FileInfo info : purgeSet) {
-			index.remove(info.key());
+			index.remove(info);
 		}
 		Iterator<FileInfo> presentFilesIt = Files.walk(startPath)
 			.filter(Files::isRegularFile)
@@ -115,17 +115,7 @@ public class LinuxFilesystemScannerImpl implements LinuxFilesystemScanner {
 							log.debug("[MOVED] " + indexFile);
 							return indexFile;
 						}
-
 					}
-
-					// Check if the file has already been seen with the same st_dev+inode - this means one of those is a hardlink
-					// if (index.contains(file.fileKey())) {
-					// // Now check if we have seen this hardlink before
-					//
-					// // We have not seen this hardlink - so add it as a new file
-
-					// }
-
 				}
 				return indexFile;
 			} else {

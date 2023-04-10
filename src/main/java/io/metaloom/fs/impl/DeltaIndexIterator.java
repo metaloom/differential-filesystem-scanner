@@ -66,6 +66,10 @@ public class DeltaIndexIterator implements Iterator<FileInfo> {
 				.filter(info -> info.state() == FileState.UNKNOWN)
 				.map(info -> {
 					info.state(FileState.DELETED);
+					// for(FileInfo linked: info.getHardLinks()) {
+					// linked.getHardLinks().clear();
+					// }
+					// info.getHardLinks().clear();
 					return info;
 				}).iterator();
 		}

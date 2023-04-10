@@ -44,12 +44,12 @@ public interface FileIndex<K extends FileKey> {
 	Collection<FileInfo> values();
 
 	/**
-	 * Remove the info from the index for the given file key.
+	 * Remove the info from the index.
 	 * 
-	 * @param key
+	 * @param file
 	 * @return Fluent API
 	 */
-	FileIndex<K> remove(K key);
+	FileIndex<K> remove(FileInfo file);
 
 	/**
 	 * Check whether the index is empty.

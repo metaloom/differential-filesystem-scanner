@@ -36,9 +36,18 @@ public class LinuxFileIndexImpl implements LinuxFileIndex {
 	}
 
 	@Override
-	public LinuxFileIndex remove(LinuxFileKey key) {
-		FileInfo info = keyIndex.remove(key);
-		if (info != null) {
+	public LinuxFileIndex remove(FileInfo info) {
+		FileInfo foundInfo = keyIndex.get(info.key());
+		if (foundInfo == null) {
+			return this;
+		} else {
+			// Let's check whether the info points to a removed hardlink.
+			for (FileInfo linked : foundInfo.getHardLinks()) {
+				if (linked.path().equals(info.path())) {
+					files.remove(linked);
+					return this;
+				}
+			}
 			files.remove(info);
 		}
 		return this;

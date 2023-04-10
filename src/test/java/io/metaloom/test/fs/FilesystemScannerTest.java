@@ -1,5 +1,6 @@
 package io.metaloom.test.fs;
 
+import static io.metaloom.test.assertj.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.io.File;
@@ -87,23 +88,30 @@ public class FilesystemScannerTest {
 		// Now add a hardlink
 		java.nio.file.Files.createLink(hardlinkFile.toPath(), existingFile.toPath());
 
-		System.out.println("------");
 		ScanResult result = scanner.scan(ROOT_PATH);
-		assertEquals(1, result.added().size(), "Only one file has been added");
+		assertThat(result).hasResults(0, 0, 0, 5, 1);
 		assertEquals(hardlinkFile.toPath(), result.added().iterator().next().path(), "The hardlink file was added");
 		assertEquals(existingFile.toPath(), result.added().iterator().next().getHardLinks().iterator().next().path(),
 			"The added file is a hardlink to the existing file");
 
 		ScanResult result2 = scanner.scan(ROOT_PATH);
-		assertEquals(0, result2.added().size());
+		assertThat(result2).hasResults(0, 0, 0, 5 + 1, 0);
 
 		// Now remove hardlink
 		hardlinkFile.delete();
 
 		ScanResult result3 = scanner.scan(ROOT_PATH);
-		assertEquals(1, result3.deleted().size());
+		assertThat(result3).hasResults(1, 0, 0, 6 - 1, 0);
 		assertEquals(hardlinkFile.toPath(), result3.deleted().iterator().next().path());
 
+		System.out.println("------");
+		for (int i = 0; i < 3; i++) {
+			ScanResult result4 = scanner.scan(ROOT_PATH);
+			result4.deleted().forEach(info -> {
+				System.out.println(info);
+			});
+			assertThat(result4).hasResults(0, 0, 0, 5, 0);
+		}
 	}
 
 	@Test
