@@ -36,7 +36,7 @@ public class ExampleUsageTest {
 
 	@Test
 	public void testStreamUsage() throws IOException {
-		// SNIPPET START usage
+		// SNIPPET START stream
 		LinuxFilesystemScanner scanner = new LinuxFilesystemScannerImpl();
 		LinuxFileIndex index = scanner.getIndex();
 
@@ -53,6 +53,6 @@ public class ExampleUsageTest {
 		stream.forEach(info -> {
 			System.out.println(info.state() + "\t" + info.path());
 		});
-		// SNIPPET END usage
+		// SNIPPET END stream
 	}
 }

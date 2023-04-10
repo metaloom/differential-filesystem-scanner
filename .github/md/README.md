@@ -22,6 +22,18 @@ Both filesystem scanner implementations however have limitations. It is **not po
 %{snippet|id=usage|file=src/test/java/io/metaloom/test/fs/ExampleUsageTest.java}
 ```
 
+Alternatively a streaming API can be used to fetch the diff.
+
+```java
+%{snippet|id=stream|file=src/test/java/io/metaloom/test/fs/ExampleUsageTest.java}
+```
+
 ## Releasing
 
-TBD
+```bash
+# Set release version
+mvn versions:set -DgenerateBackupPoms=false
+
+# Invoke the release
+mvn clean deploy -Drelease
+```

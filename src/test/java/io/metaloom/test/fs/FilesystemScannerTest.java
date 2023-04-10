@@ -115,6 +115,34 @@ public class FilesystemScannerTest {
 	}
 
 	@Test
+	public void testHardLinkHandling2() throws IOException {
+		LinuxFilesystemScanner scanner = new LinuxFilesystemScannerImpl();
+		scanner.scan(ROOT_PATH);
+
+		// Now add a hardlink
+		java.nio.file.Files.createLink(hardlinkFile.toPath(), existingFile.toPath());
+
+		assertThat(scanner.scan(ROOT_PATH)).hasResults(0, 0, 0, 5, 1);
+		assertThat(scanner.scan(ROOT_PATH)).hasResults(0, 0, 0, 6, 0);
+
+		// Now remove source of the hardlink
+		existingFile.delete();
+
+		ScanResult result3 = scanner.scan(ROOT_PATH);
+		assertThat(result3).hasResults(1, 0, 0, 6 - 1, 0);
+		assertEquals(existingFile.toPath(), result3.deleted().iterator().next().path());
+
+		System.out.println("------");
+		for (int i = 0; i < 3; i++) {
+			ScanResult result4 = scanner.scan(ROOT_PATH);
+			result4.deleted().forEach(info -> {
+				System.out.println(info);
+			});
+			assertThat(result4).hasResults(0, 0, 0, 5, 0);
+		}
+	}
+
+	@Test
 	public void testScan() throws IOException {
 		LinuxFilesystemScanner index = new LinuxFilesystemScannerImpl();
 

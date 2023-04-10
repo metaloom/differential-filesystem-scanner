@@ -19,8 +19,8 @@ Both filesystem scanner implementations however have limitations. It is **not po
 ## Example
 
 ```java
-FilesystemScannerImpl scanner = new FilesystemScannerImpl();
-FileIndex index = scanner.getIndex();
+LinuxFilesystemScanner scanner = new LinuxFilesystemScannerImpl();
+LinuxFileIndex index = scanner.getIndex();
 
 index.add(Paths.get("target/testfs/folderB/modByTime.txt"));
 
@@ -32,6 +32,33 @@ Set<FileInfo> modifiedFiles = result.modified();
 Set<FileInfo> movedFiles = result.moved();
 ```
 
+Alternatively a streaming API can be used to fetch the diff.
+
+```java
+LinuxFilesystemScanner scanner = new LinuxFilesystemScannerImpl();
+LinuxFileIndex index = scanner.getIndex();
+
+// Add a file to the index which does not exist.
+// It will be listed as "deleted" by the scanner.
+FileInfo missingFileInfo = new LinuxFileInfoImpl(Paths.get("missingFile.txt"), 4L, 42L, 2L, 1L, 2L);
+index.add(missingFileInfo);
+
+// And add a existing file. It will be tracked with state "PRESENT"
+index.add(Paths.get("src/test/resources/logback.xml"));
+
+Path sourcePath = Paths.get("src");
+Stream<FileInfo> stream = scanner.scanStream(sourcePath);
+stream.forEach(info -> {
+  System.out.println(info.state() + "\t" + info.path());
+});
+```
+
 ## Releasing
 
-TBD
+```bash
+# Set release version
+mvn versions:set -DgenerateBackupPoms=false
+
+# Invoke the release
+mvn clean deploy -Drelease
+```
