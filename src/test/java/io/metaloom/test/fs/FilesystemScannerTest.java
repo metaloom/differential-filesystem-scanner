@@ -14,16 +14,18 @@ import org.junit.jupiter.api.Test;
 import com.google.common.io.Files;
 
 import io.metaloom.fs.FileInfo;
-import io.metaloom.fs.FilesystemScanner;
 import io.metaloom.fs.ScanResult;
-import io.metaloom.fs.impl.FilesystemScannerImpl;
+import io.metaloom.fs.linux.LinuxFilesystemScanner;
+import io.metaloom.fs.linux.impl.LinuxFilesystemScannerImpl;
 
 public class FilesystemScannerTest {
 
 	public static File ROOT = new File("target", "testfs");
 	public static File folderA = new File(ROOT, "folderA");
 	public static File folderB = new File(ROOT, "folderB");
+	public static Path ROOT_PATH = ROOT.toPath();
 	public static File existingFile = new File(folderA, "existingFile");
+	public static File hardlinkFile = new File(folderB, "hardlinkFile");
 	public static File existingFile2 = new File(folderA, "existingFile2");
 	public static File newFile = new File(folderA, "new.txt");
 	public static File deletedFile = new File(folderA, "deleted.txt");
@@ -34,10 +36,6 @@ public class FilesystemScannerTest {
 	@BeforeEach
 	public void cleanup() throws IOException {
 		FileUtils.deleteDirectory(ROOT);
-	}
-
-	@Test
-	public void testStream() throws IOException {
 		// Prepare test files
 		folderA.mkdirs();
 		folderB.mkdirs();
@@ -46,16 +44,19 @@ public class FilesystemScannerTest {
 		Files.touch(deletedFile);
 		Files.touch(movingFile);
 		Files.touch(modifiedByModTimeFile);
+	}
 
-		FilesystemScanner scanner = new FilesystemScannerImpl();
-		scanner.scanStream(ROOT.toPath()).count();
+	@Test
+	public void testStream() throws IOException {
+		LinuxFilesystemScanner scanner = new LinuxFilesystemScannerImpl();
+		scanner.scanStream(ROOT_PATH).count();
 		System.out.println("----------");
 
 		scanner.getIndex().values().forEach(info -> {
 			System.out.println(info);
 		});
 		System.out.println("-------");
-		
+
 		// Mod file
 		Files.touch(modifiedByModTimeFile);
 
@@ -68,7 +69,7 @@ public class FilesystemScannerTest {
 		// Move file
 		movingFile.renameTo(moveTargetFile);
 
-		Stream<FileInfo> stream = scanner.scanStream(ROOT.toPath());
+		Stream<FileInfo> stream = scanner.scanStream(ROOT_PATH);
 		stream.forEach(info -> {
 			System.out.println(info);
 		});
@@ -79,21 +80,38 @@ public class FilesystemScannerTest {
 	}
 
 	@Test
+	public void testHardLinkHandling() throws IOException {
+		LinuxFilesystemScanner scanner = new LinuxFilesystemScannerImpl();
+		scanner.scan(ROOT_PATH);
+
+		// Now add a hardlink
+		java.nio.file.Files.createLink(hardlinkFile.toPath(), existingFile.toPath());
+
+		System.out.println("------");
+		ScanResult result = scanner.scan(ROOT_PATH);
+		assertEquals(1, result.added().size(), "Only one file has been added");
+		assertEquals(hardlinkFile.toPath(), result.added().iterator().next().path(), "The hardlink file was added");
+		assertEquals(existingFile.toPath(), result.added().iterator().next().getHardLinks().iterator().next().path(),
+			"The added file is a hardlink to the existing file");
+
+		ScanResult result2 = scanner.scan(ROOT_PATH);
+		assertEquals(0, result2.added().size());
+
+		// Now remove hardlink
+		hardlinkFile.delete();
+
+		ScanResult result3 = scanner.scan(ROOT_PATH);
+		assertEquals(1, result3.deleted().size());
+		assertEquals(hardlinkFile.toPath(), result3.deleted().iterator().next().path());
+
+	}
+
+	@Test
 	public void testScan() throws IOException {
+		LinuxFilesystemScanner index = new LinuxFilesystemScannerImpl();
 
-		// Prepare test files
-		folderA.mkdirs();
-		folderB.mkdirs();
-		Files.touch(existingFile);
-		Files.touch(existingFile2);
-		Files.touch(deletedFile);
-		Files.touch(movingFile);
-		Files.touch(modifiedByModTimeFile);
-
-		FilesystemScanner index = new FilesystemScannerImpl();
-		Path sourcePath = ROOT.toPath();
 		// 1. Initial scan
-		index.scan(sourcePath);
+		index.scan(ROOT_PATH);
 
 		System.out.println("----------");
 
@@ -110,7 +128,7 @@ public class FilesystemScannerTest {
 		movingFile.renameTo(moveTargetFile);
 
 		// 2. Diff with second scan
-		ScanResult result = index.scan(sourcePath);
+		ScanResult result = index.scan(ROOT_PATH);
 		assertEquals(1, result.deleted().size(), "There should only be one file marked as deleted");
 		assertEquals(1, result.moved().size(), "There should only be one file marked as moved");
 		assertEquals(1, result.modified().size(), "There should only be one file marked as modified");
@@ -118,7 +136,7 @@ public class FilesystemScannerTest {
 		assertEquals(1, result.added().size(), "There should only be one file marked as added");
 
 		// 3. Run - Now the diff should be different since we did not change files
-		result = index.scan(sourcePath);
+		result = index.scan(ROOT_PATH);
 		assertEquals(0, result.deleted().size());
 		assertEquals(0, result.moved().size());
 		assertEquals(0, result.modified().size());

@@ -8,20 +8,20 @@ import java.util.stream.Stream;
 
 import org.junit.jupiter.api.Test;
 
-import io.metaloom.fs.FileIndex;
 import io.metaloom.fs.FileInfo;
-import io.metaloom.fs.FilesystemScanner;
 import io.metaloom.fs.ScanResult;
-import io.metaloom.fs.impl.FileInfoImpl;
-import io.metaloom.fs.impl.FilesystemScannerImpl;
+import io.metaloom.fs.linux.LinuxFileIndex;
+import io.metaloom.fs.linux.LinuxFilesystemScanner;
+import io.metaloom.fs.linux.impl.LinuxFileInfoImpl;
+import io.metaloom.fs.linux.impl.LinuxFilesystemScannerImpl;
 
 public class ExampleUsageTest {
 
 	@Test
 	public void testUsage() throws IOException {
 		// SNIPPET START usage
-		FilesystemScanner scanner = new FilesystemScannerImpl();
-		FileIndex index = scanner.getIndex();
+		LinuxFilesystemScanner scanner = new LinuxFilesystemScannerImpl();
+		LinuxFileIndex index = scanner.getIndex();
 
 		index.add(Paths.get("target/testfs/folderB/modByTime.txt"));
 
@@ -37,12 +37,12 @@ public class ExampleUsageTest {
 	@Test
 	public void testStreamUsage() throws IOException {
 		// SNIPPET START usage
-		FilesystemScanner scanner = new FilesystemScannerImpl();
-		FileIndex index = scanner.getIndex();
+		LinuxFilesystemScanner scanner = new LinuxFilesystemScannerImpl();
+		LinuxFileIndex index = scanner.getIndex();
 
 		// Add a file to the index which does not exist.
 		// It will be listed as "deleted" by the scanner.
-		FileInfo missingFileInfo = new FileInfoImpl(Paths.get("missingFile.txt"), 42L, 2L, 1L, 2L);
+		FileInfo missingFileInfo = new LinuxFileInfoImpl(Paths.get("missingFile.txt"), 4L, 42L, 2L, 1L, 2L);
 		index.add(missingFileInfo);
 
 		// And add a existing file. It will be tracked with state "PRESENT"

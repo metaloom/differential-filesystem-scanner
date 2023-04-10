@@ -4,10 +4,12 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Collection;
 
+import io.metaloom.fs.linux.impl.LinuxFileKey;
+
 /**
  * Index which holds the file information that will be used to generate the diff during a scan operation.
  */
-public interface FileIndex {
+public interface FileIndex<K extends FileKey> {
 
 	/**
 	 * Add the fileinfo for the provided path to the index.
@@ -27,12 +29,12 @@ public interface FileIndex {
 	FileInfo add(FileInfo info);
 
 	/**
-	 * Retrieve the fileinfo using the provided inode.
+	 * Retrieve the fileinfo using the provided file key.
 	 * 
-	 * @param inode
+	 * @param key
 	 * @return Found information
 	 */
-	FileInfo get(Long inode);
+	FileInfo get(LinuxFileKey key);
 
 	/**
 	 * Return all values stored in the index.
@@ -42,12 +44,12 @@ public interface FileIndex {
 	Collection<FileInfo> values();
 
 	/**
-	 * Remove the info from the index for the given inode.
+	 * Remove the info from the index for the given file key.
 	 * 
-	 * @param inode
-	 * @return
+	 * @param key
+	 * @return Fluent API
 	 */
-	FileIndex remove(Long inode);
+	FileIndex<K> remove(K key);
 
 	/**
 	 * Check whether the index is empty.
@@ -55,5 +57,18 @@ public interface FileIndex {
 	 * @return
 	 */
 	boolean isEmpty();
+
+	/**
+	 * Check if the index contains file info for the given key.
+	 * 
+	 * @param key
+	 * @return
+	 */
+	boolean contains(K key);
+
+	/**
+	 * Clear the index. This will reset the index to an empty state.
+	 */
+	void clear();
 
 }

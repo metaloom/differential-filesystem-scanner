@@ -15,10 +15,10 @@ import io.metaloom.fs.FileState;
 public class DeltaIndexIterator implements Iterator<FileInfo> {
 
 	private Iterator<FileInfo> presentFilesIt;
-	private FileIndex index;
+	private FileIndex<?> index;
 	private Iterator<FileInfo> remaininigIt = null;
 
-	public DeltaIndexIterator(Iterator<FileInfo> presentFilesIt, FileIndex index) {
+	public DeltaIndexIterator(Iterator<FileInfo> presentFilesIt, FileIndex<?> index) {
 		this.presentFilesIt = presentFilesIt;
 		this.index = index;
 	}
