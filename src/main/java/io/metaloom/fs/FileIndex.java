@@ -1,5 +1,6 @@
 package io.metaloom.fs;
 
+import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Collection;
 
@@ -12,17 +13,18 @@ public interface FileIndex {
 	 * Add the fileinfo for the provided path to the index.
 	 * 
 	 * @param path
-	 * @return Fluent API
+	 * @return Added info
+	 * @throws IOException
 	 */
-	FileIndex add(Path path);
+	FileInfo add(Path path) throws IOException;
 
 	/**
 	 * Add the fileinfo to the index.
 	 * 
 	 * @param info
-	 * @return Fluent API
+	 * @return Added info
 	 */
-	FileIndex add(FileInfo info);
+	FileInfo add(FileInfo info);
 
 	/**
 	 * Retrieve the fileinfo using the provided inode.

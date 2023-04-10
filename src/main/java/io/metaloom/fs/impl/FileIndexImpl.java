@@ -1,9 +1,11 @@
 package io.metaloom.fs.impl;
 
+import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 
 import io.metaloom.fs.FileIndex;
 import io.metaloom.fs.FileInfo;
@@ -34,14 +36,17 @@ public class FileIndexImpl implements FileIndex {
 	}
 
 	@Override
-	public FileIndex add(FileInfo info) {
+	public FileInfo add(FileInfo info) {
+		Long inode = info.inode();
+		Objects.requireNonNull(inode, "The inode for info " + info + " is missing. Can't add info to index");
 		onlineFiles.put(info.inode(), info);
-		return this;
+		return info;
 	}
 
 	@Override
-	public FileIndex add(Path path) {
-		add(new FileInfoImpl(path));
-		return this;
+	public FileInfo add(Path path) throws IOException {
+		FileInfoImpl info = new FileInfoImpl(path);
+		info.updateAttr(new LinuxFile(path));
+		return add(info);
 	}
 }
