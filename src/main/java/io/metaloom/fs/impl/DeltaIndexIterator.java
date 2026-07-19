@@ -16,7 +16,7 @@ public class DeltaIndexIterator implements Iterator<FileInfo> {
 
 	private Iterator<FileInfo> presentFilesIt;
 	private FileIndex<?> index;
-	private Iterator<FileInfo> remaininigIt = null;
+	private Iterator<FileInfo> remainingIt = null;
 
 	public DeltaIndexIterator(Iterator<FileInfo> presentFilesIt, FileIndex<?> index) {
 		this.presentFilesIt = presentFilesIt;
@@ -61,18 +61,14 @@ public class DeltaIndexIterator implements Iterator<FileInfo> {
 	 * @return
 	 */
 	private Iterator<FileInfo> remainingIt() {
-		if (remaininigIt == null) {
-			remaininigIt = index.values().stream()
+		if (remainingIt == null) {
+			remainingIt = index.values().stream()
 				.filter(info -> info.state() == FileState.UNKNOWN)
 				.map(info -> {
 					info.state(FileState.DELETED);
-					// for(FileInfo linked: info.getHardLinks()) {
-					// linked.getHardLinks().clear();
-					// }
-					// info.getHardLinks().clear();
 					return info;
 				}).iterator();
 		}
-		return remaininigIt;
+		return remainingIt;
 	}
 }

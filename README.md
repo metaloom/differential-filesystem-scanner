@@ -20,9 +20,10 @@ It is highly inspired by [snapraid filesystem scan implementation](https://githu
 LinuxFilesystemScanner scanner = new LinuxFilesystemScannerImpl();
 LinuxFileIndex index = scanner.getIndex();
 
-index.add(Paths.get("target/testfs/folderB/modByTime.txt"));
+// Pre-populate the index with a previously known file.
+index.add(knownFile);
 
-Path sourcePath = Paths.get("src");
+// Scan the tree and diff it against the index.
 ScanResult result = scanner.scan(sourcePath);
 Set<FileInfo> addedFiles = result.added();
 Set<FileInfo> deletedFiles = result.deleted();
@@ -38,13 +39,12 @@ LinuxFileIndex index = scanner.getIndex();
 
 // Add a file to the index which does not exist.
 // It will be listed as "deleted" by the scanner.
-FileInfo missingFileInfo = new LinuxFileInfoImpl(Paths.get("missingFile.txt"), 4L, 42L, 2L, 1L, 2L);
+FileInfo missingFileInfo = new LinuxFileInfoImpl(sourcePath.resolve("missingFile.txt"), 4L, 42L, 2L, 1L, 2L);
 index.add(missingFileInfo);
 
-// And add a existing file. It will be tracked with state "PRESENT"
-index.add(Paths.get("src/test/resources/logback.xml"));
+// And add an existing file. It will be tracked with state "PRESENT".
+index.add(knownFile);
 
-Path sourcePath = Paths.get("src");
 Stream<FileInfo> stream = scanner.scanStream(sourcePath);
 stream.forEach(info -> {
   System.out.println(info.state() + "\t" + info.path());
@@ -53,9 +53,9 @@ stream.forEach(info -> {
 
 ## Limitations
 
-Both filesystem scanner implementations however have limitations. It is **not possible** to precisely detected all modified files. A file can be modified without altering the modification timestamp and size. The scanner will thus not be able to detect the modification.
+This filesystem scanner however has limitations. It is **not possible** to precisely detect all modified files. A file can be modified without altering the modification timestamp and size. The scanner will thus not be able to detect the modification.
 
-The current version of this library only contains a **Linux** specific implementation.
+The current version of this library only contains a **Linux** specific implementation which relies on `inode` information and thus works best on filesystems such as `ext4`.
 
 ## Releasing
 

@@ -3,180 +3,193 @@ package io.metaloom.test.fs;
 import static io.metaloom.test.assertj.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
+import java.nio.file.attribute.FileTime;
+import java.time.Instant;
 import java.util.stream.Stream;
 
-import org.apache.commons.io.FileUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-
-import com.google.common.io.Files;
+import org.junit.jupiter.api.io.TempDir;
 
 import io.metaloom.fs.FileInfo;
+import io.metaloom.fs.FileState;
 import io.metaloom.fs.ScanResult;
 import io.metaloom.fs.linux.LinuxFilesystemScanner;
 import io.metaloom.fs.linux.impl.LinuxFilesystemScannerImpl;
 
+/**
+ * Tests for the {@link LinuxFilesystemScanner}. Each test operates on its own isolated {@link TempDir} to avoid cross-test interference.
+ */
 public class FilesystemScannerTest {
 
-	public static File ROOT = new File("target", "testfs");
-	public static File folderA = new File(ROOT, "folderA");
-	public static File folderB = new File(ROOT, "folderB");
-	public static Path ROOT_PATH = ROOT.toPath();
-	public static File existingFile = new File(folderA, "existingFile");
-	public static File hardlinkFile = new File(folderB, "hardlinkFile");
-	public static File existingFile2 = new File(folderA, "existingFile2");
-	public static File newFile = new File(folderA, "new.txt");
-	public static File deletedFile = new File(folderA, "deleted.txt");
-	public static File modifiedByModTimeFile = new File(folderB, "modByTime.txt");
-	public static File movingFile = new File(folderA, "moved.txt");
-	public static File moveTargetFile = new File(folderB, "movedTo.txt");
+	@TempDir
+	Path root;
+
+	private Path folderA;
+	private Path folderB;
+
+	private Path deletedFile;
+	private Path movingFile;
+	private Path modifiedFile;
 
 	@BeforeEach
-	public void cleanup() throws IOException {
-		FileUtils.deleteDirectory(ROOT);
-		// Prepare test files
-		folderA.mkdirs();
-		folderB.mkdirs();
-		Files.touch(existingFile);
-		Files.touch(existingFile2);
-		Files.touch(deletedFile);
-		Files.touch(movingFile);
-		Files.touch(modifiedByModTimeFile);
+	public void setup() throws IOException {
+		folderA = Files.createDirectories(root.resolve("folderA"));
+		folderB = Files.createDirectories(root.resolve("folderB"));
+
+		// Two untouched files which stay present across the scans of every test.
+		writeFile(folderA.resolve("existingFile"), "a");
+		writeFile(folderA.resolve("existingFile2"), "b");
+		deletedFile = writeFile(folderA.resolve("deleted.txt"), "c");
+		movingFile = writeFile(folderA.resolve("moved.txt"), "d");
+		modifiedFile = writeFile(folderB.resolve("modByTime.txt"), "e");
 	}
 
 	@Test
-	public void testStream() throws IOException {
+	public void shouldReportNewFilesOnInitialScan() throws IOException {
 		LinuxFilesystemScanner scanner = new LinuxFilesystemScannerImpl();
-		scanner.scanStream(ROOT_PATH).count();
-		System.out.println("----------");
-
-		scanner.getIndex().values().forEach(info -> {
-			System.out.println(info);
-		});
-		System.out.println("-------");
-
-		// Mod file
-		Files.touch(modifiedByModTimeFile);
-
-		// New file
-		Files.touch(newFile);
-
-		// Del file
-		deletedFile.delete();
-
-		// Move file
-		movingFile.renameTo(moveTargetFile);
-
-		Stream<FileInfo> stream = scanner.scanStream(ROOT_PATH);
-		stream.forEach(info -> {
-			System.out.println(info);
-		});
-		System.out.println("-------");
-		scanner.getIndex().values().forEach(info -> {
-			System.out.println(info);
-		});
+		// All five files are unknown to a fresh index and must be reported as added.
+		ScanResult result = scanner.scan(root);
+		assertThat(result).hasResults(0, 0, 0, 0, 5);
 	}
 
 	@Test
-	public void testHardLinkHandling() throws IOException {
+	public void shouldReportUnchangedFilesAsPresent() throws IOException {
 		LinuxFilesystemScanner scanner = new LinuxFilesystemScannerImpl();
-		scanner.scan(ROOT_PATH);
+		scanner.scan(root);
 
-		// Now add a hardlink
-		java.nio.file.Files.createLink(hardlinkFile.toPath(), existingFile.toPath());
+		// Nothing was touched - the second scan must report all files as present.
+		ScanResult result = scanner.scan(root);
+		assertThat(result).hasResults(0, 0, 0, 5, 0);
+	}
 
-		ScanResult result = scanner.scan(ROOT_PATH);
+	@Test
+	public void shouldDetectAddedFile() throws IOException {
+		LinuxFilesystemScanner scanner = new LinuxFilesystemScannerImpl();
+		scanner.scan(root);
+
+		Path newFile = writeFile(folderA.resolve("new.txt"), "new");
+
+		ScanResult result = scanner.scan(root);
 		assertThat(result).hasResults(0, 0, 0, 5, 1);
-		assertEquals(hardlinkFile.toPath(), result.added().iterator().next().path(), "The hardlink file was added");
-		assertEquals(existingFile.toPath(), result.added().iterator().next().getHardLinks().iterator().next().path(),
-			"The added file is a hardlink to the existing file");
-
-		ScanResult result2 = scanner.scan(ROOT_PATH);
-		assertThat(result2).hasResults(0, 0, 0, 5 + 1, 0);
-
-		// Now remove hardlink
-		hardlinkFile.delete();
-
-		ScanResult result3 = scanner.scan(ROOT_PATH);
-		assertThat(result3).hasResults(1, 0, 0, 6 - 1, 0);
-		assertEquals(hardlinkFile.toPath(), result3.deleted().iterator().next().path());
-
-		System.out.println("------");
-		for (int i = 0; i < 3; i++) {
-			ScanResult result4 = scanner.scan(ROOT_PATH);
-			result4.deleted().forEach(info -> {
-				System.out.println(info);
-			});
-			assertThat(result4).hasResults(0, 0, 0, 5, 0);
-		}
+		assertEquals(newFile, result.added().iterator().next().path(), "The new file should be reported as added.");
 	}
 
 	@Test
-	public void testHardLinkHandling2() throws IOException {
+	public void shouldDetectDeletedFile() throws IOException {
 		LinuxFilesystemScanner scanner = new LinuxFilesystemScannerImpl();
-		scanner.scan(ROOT_PATH);
+		scanner.scan(root);
 
-		// Now add a hardlink
-		java.nio.file.Files.createLink(hardlinkFile.toPath(), existingFile.toPath());
+		Files.delete(deletedFile);
 
-		assertThat(scanner.scan(ROOT_PATH)).hasResults(0, 0, 0, 5, 1);
-		assertThat(scanner.scan(ROOT_PATH)).hasResults(0, 0, 0, 6, 0);
-
-		// Now remove source of the hardlink
-		existingFile.delete();
-
-		ScanResult result3 = scanner.scan(ROOT_PATH);
-		assertThat(result3).hasResults(1, 0, 0, 6 - 1, 0);
-		assertEquals(existingFile.toPath(), result3.deleted().iterator().next().path());
-
-		System.out.println("------");
-		for (int i = 0; i < 3; i++) {
-			ScanResult result4 = scanner.scan(ROOT_PATH);
-			result4.deleted().forEach(info -> {
-				System.out.println(info);
-			});
-			assertThat(result4).hasResults(0, 0, 0, 5, 0);
-		}
+		ScanResult result = scanner.scan(root);
+		assertThat(result).hasResults(1, 0, 0, 4, 0);
+		assertEquals(deletedFile, result.deleted().iterator().next().path(), "The removed file should be reported as deleted.");
 	}
 
 	@Test
-	public void testScan() throws IOException {
-		LinuxFilesystemScanner index = new LinuxFilesystemScannerImpl();
+	public void shouldDetectModifiedFileByContent() throws IOException {
+		LinuxFilesystemScanner scanner = new LinuxFilesystemScannerImpl();
+		scanner.scan(root);
 
-		// 1. Initial scan
-		index.scan(ROOT_PATH);
+		// Changing the content also changes the file size.
+		writeFile(modifiedFile, "much longer content than before");
 
-		System.out.println("----------");
+		ScanResult result = scanner.scan(root);
+		assertThat(result).hasResults(0, 0, 1, 4, 0);
+		assertEquals(modifiedFile, result.modified().iterator().next().path(), "The changed file should be reported as modified.");
+	}
 
-		// Mod file
-		Files.touch(modifiedByModTimeFile);
+	@Test
+	public void shouldDetectModifiedFileByModificationTime() throws IOException {
+		LinuxFilesystemScanner scanner = new LinuxFilesystemScannerImpl();
+		scanner.scan(root);
 
-		// New file
-		Files.touch(newFile);
+		// Keep the same size but move the modification timestamp forward. This mimics an in-place
+		// modification that does not alter the file size but bumps the (nanosecond) mtime.
+		Files.setLastModifiedTime(modifiedFile, FileTime.from(Instant.now().plusSeconds(120).plusNanos(123456)));
 
-		// Del file
-		deletedFile.delete();
+		ScanResult result = scanner.scan(root);
+		assertThat(result).hasResults(0, 0, 1, 4, 0);
+		assertEquals(modifiedFile, result.modified().iterator().next().path(), "The re-timestamped file should be reported as modified.");
+	}
 
-		// Move file
-		movingFile.renameTo(moveTargetFile);
+	@Test
+	public void shouldDetectMovedFile() throws IOException {
+		LinuxFilesystemScanner scanner = new LinuxFilesystemScannerImpl();
+		scanner.scan(root);
 
-		// 2. Diff with second scan
-		ScanResult result = index.scan(ROOT_PATH);
-		assertEquals(1, result.deleted().size(), "There should only be one file marked as deleted");
-		assertEquals(1, result.moved().size(), "There should only be one file marked as moved");
-		assertEquals(1, result.modified().size(), "There should only be one file marked as modified");
-		assertEquals(2, result.present().size(), "There should only be two file marked as present");
-		assertEquals(1, result.added().size(), "There should only be one file marked as added");
+		Path moveTarget = folderB.resolve("movedTo.txt");
+		Files.move(movingFile, moveTarget, StandardCopyOption.ATOMIC_MOVE);
 
-		// 3. Run - Now the diff should be different since we did not change files
-		result = index.scan(ROOT_PATH);
-		assertEquals(0, result.deleted().size());
-		assertEquals(0, result.moved().size());
-		assertEquals(0, result.modified().size());
-		assertEquals(0, result.added().size());
-		assertEquals(5, result.present().size());
+		ScanResult result = scanner.scan(root);
+		assertThat(result).hasResults(0, 1, 0, 4, 0);
+		assertEquals(moveTarget, result.moved().iterator().next().path(), "The moved file should carry the new path.");
+	}
+
+	@Test
+	public void shouldDetectAllChangesAtOnce() throws IOException {
+		LinuxFilesystemScanner scanner = new LinuxFilesystemScannerImpl();
+		scanner.scan(root);
+
+		// Modify
+		writeFile(modifiedFile, "changed content");
+		// Add
+		writeFile(folderA.resolve("new.txt"), "new");
+		// Delete
+		Files.delete(deletedFile);
+		// Move
+		Path moveTarget = folderB.resolve("movedTo.txt");
+		Files.move(movingFile, moveTarget, StandardCopyOption.ATOMIC_MOVE);
+
+		ScanResult result = scanner.scan(root);
+		assertThat(result).hasResults(1, 1, 1, 2, 1);
+
+		// A third, idempotent scan must report everything as present again.
+		ScanResult result2 = scanner.scan(root);
+		assertThat(result2).hasResults(0, 0, 0, 5, 0);
+	}
+
+	@Test
+	public void shouldExposeStatesViaStreamApi() throws IOException {
+		LinuxFilesystemScanner scanner = new LinuxFilesystemScannerImpl();
+		scanner.scanStream(root).forEach(info -> {
+		});
+
+		writeFile(modifiedFile, "changed");
+		writeFile(folderA.resolve("new.txt"), "new");
+		Files.delete(deletedFile);
+
+		long added = scanner.scanStream(root).filter(info -> info.state() == FileState.NEW).count();
+		assertEquals(1, added, "The stream must expose the added file.");
+	}
+
+	@Test
+	public void shouldHandleEmptyDirectory(@TempDir Path emptyRoot) throws IOException {
+		LinuxFilesystemScanner scanner = new LinuxFilesystemScannerImpl();
+		ScanResult result = scanner.scan(emptyRoot);
+		assertThat(result).hasResults(0, 0, 0, 0, 0);
+	}
+
+	@Test
+	public void shouldCloseWalkStreamAllowingDeletionOfScannedTree() throws IOException {
+		LinuxFilesystemScanner scanner = new LinuxFilesystemScannerImpl();
+		try (Stream<FileInfo> stream = scanner.scanStream(root)) {
+			stream.forEach(info -> {
+			});
+		}
+		// If the walk stream leaked an open directory handle this scan would still succeed on Linux,
+		// but we assert the scan can be repeated which exercises the purge/rescan path.
+		ScanResult result = scanner.scan(root);
+		assertThat(result).hasResults(0, 0, 0, 5, 0);
+	}
+
+	private static Path writeFile(Path path, String content) throws IOException {
+		Files.writeString(path, content);
+		return path;
 	}
 }

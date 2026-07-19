@@ -28,9 +28,9 @@ Alternatively a streaming API can be used to fetch the diff.
 
 ## Limitations
 
-Both filesystem scanner implementations however have limitations. It is **not possible** to precisely detected all modified files. A file can be modified without altering the modification timestamp and size. The scanner will thus not be able to detect the modification.
+This filesystem scanner however has limitations. It is **not possible** to precisely detect all modified files. A file can be modified without altering the modification timestamp and size. The scanner will thus not be able to detect the modification.
 
-The current version of this library only contains a **Linux** specific implementation.
+The current version of this library only contains a **Linux** specific implementation which relies on `inode` information and thus works best on filesystems such as `ext4`.
 
 ## Releasing
 
