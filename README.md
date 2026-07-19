@@ -10,7 +10,7 @@ It is highly inspired by [snapraid filesystem scan implementation](https://githu
 <dependency>
   <groupId>io.metaloom.utils</groupId>
   <artifactId>differential-filesystem-scanner</artifactId>
-  <version>0.0.1-SNAPSHOT</version>
+  <version>0.1.0-SNAPSHOT</version>
 </dependency>
 ```
 

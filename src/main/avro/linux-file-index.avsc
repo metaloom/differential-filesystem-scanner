@@ -1,0 +1,38 @@
+{
+    "type": "record",
+    "name": "LinuxFileEntry",
+    "namespace": "io.metaloom.fs.linux.impl.avro",
+    "doc": "A single persisted file index entry. State is transient (per-scan) and thus not stored. Hardlinks are reconstructed on load by grouping entries which share the same (stDev, stIno).",
+    "fields": [
+        {
+            "name": "path",
+            "type": "string",
+            "doc": "Absolute or relative file path as recorded during the scan."
+        },
+        {
+            "name": "stDev",
+            "type": "long",
+            "doc": "Filesystem device id (st_dev)."
+        },
+        {
+            "name": "stIno",
+            "type": "long",
+            "doc": "Inode number (st_ino)."
+        },
+        {
+            "name": "size",
+            "type": "long",
+            "doc": "File size in bytes."
+        },
+        {
+            "name": "mtimeSec",
+            "type": "long",
+            "doc": "Modification time epoch seconds."
+        },
+        {
+            "name": "mtimeNano",
+            "type": "long",
+            "doc": "Modification time nanosecond component (0-999999999)."
+        }
+    ]
+}

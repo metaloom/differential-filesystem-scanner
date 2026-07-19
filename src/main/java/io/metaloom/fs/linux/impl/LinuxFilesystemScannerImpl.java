@@ -30,7 +30,28 @@ public class LinuxFilesystemScannerImpl implements LinuxFilesystemScanner {
 
 	private static final Logger log = LoggerFactory.getLogger(LinuxFilesystemScannerImpl.class);
 
-	private LinuxFileIndex index = new LinuxFileIndexImpl();
+	private final LinuxFileIndex index;
+
+	/**
+	 * Create a scanner with a fresh, empty index.
+	 */
+	public LinuxFilesystemScannerImpl() {
+		this(new LinuxFileIndexImpl());
+	}
+
+	/**
+	 * Create a scanner backed by the provided index. This allows resuming a differential scan from a previously persisted index (see
+	 * {@link io.metaloom.fs.FileIndexStore}).
+	 *
+	 * @param index
+	 *            index to diff against; must not be {@code null}
+	 */
+	public LinuxFilesystemScannerImpl(LinuxFileIndex index) {
+		if (index == null) {
+			throw new IllegalArgumentException("The index must not be null");
+		}
+		this.index = index;
+	}
 
 	@Override
 	public LinuxFileIndex getIndex() {

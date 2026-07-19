@@ -5,7 +5,7 @@
 
     <groupId>io.metaloom.utils</groupId>
     <artifactId>differential-filesystem-scanner</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
+    <version>0.1.0-SNAPSHOT</version>
     <packaging>jar</packaging>
 
     <parent>
@@ -13,6 +13,11 @@
         <artifactId>maven-parent</artifactId>
         <version>3.0.0-SNAPSHOT</version>
     </parent>
+
+    <properties>
+        <!-- Keep in sync with the metaloom BOM (avro.version) so downstream cortex modules align. -->
+        <avro.version>1.12.0</avro.version>
+    </properties>
 
     <dependencies>
         <!-- Logging -->
@@ -25,6 +30,12 @@
             <groupId>io.metaloom.utils</groupId>
             <artifactId>utils</artifactId>
             <version>0.3.0-SNAPSHOT</version>
+        </dependency>
+        <!-- Binary index persistence -->
+        <dependency>
+            <groupId>org.apache.avro</groupId>
+            <artifactId>avro</artifactId>
+            <version>${avro.version}</version>
         </dependency>
 
         <!--Test-->
@@ -83,6 +94,23 @@
                         <version>0.1.2</version>
                     </dependency>
                 </dependencies>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.avro</groupId>
+                <artifactId>avro-maven-plugin</artifactId>
+                <version>${avro.version}</version>
+                <executions>
+                    <execution>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>schema</goal>
+                        </goals>
+                        <configuration>
+                            <sourceDirectory>${project.basedir}/src/main/avro</sourceDirectory>
+                            <outputDirectory>${project.basedir}/target/generated-sources/avro</outputDirectory>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>
